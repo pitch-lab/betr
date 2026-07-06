@@ -1,0 +1,24 @@
+{
+	"type": "module",
+	"scripts": {
+		"dev": "tsx --watch src/index.ts",
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"db:generate": "drizzle-kit generate",
+		"db:push": "drizzle-kit push"
+	},
+	"devDependencies": {
+		"@types/node": "^26.1.0",
+		"drizzle-kit": "^0.31.10",
+		"tsx": "^4.23.0",
+		"typescript": "^6.0.3"
+	},
+	"dependencies": {
+		"@neondatabase/serverless": "^1.1.0",
+		"@solana/web3.js": "^1.98.4",
+		"bs58": "^6.0.0",
+		"dotenv": "^17.4.2",
+		"drizzle-orm": "^0.45.2",
+		"grammy": "^1.44.0"
+	}
+}
