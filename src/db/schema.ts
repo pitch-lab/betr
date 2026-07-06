@@ -1,0 +1,37 @@
+import { pgTable, serial, bigint, varchar, text, timestamp, integer, numeric, unique } from "drizzle-orm/pg-core";
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  telegramId: bigint("telegram_id", { mode: "bigint" }).notNull().unique(),
+  username: varchar("username", { length: 255 }),
+  encryptedPrivateKey: text("encrypted_private_key").notNull(),
+  publicKey: varchar("public_key", { length: 44 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const markets = pgTable("markets", {
+  id: serial("id").primaryKey(),
+  groupId: bigint("group_id", { mode: "bigint" }).notNull(),
+  creatorId: bigint("creator_id", { mode: "bigint" }).notNull(),
+  question: text("question").notNull(),
+  minBet: numeric("min_bet", { precision: 18, scale: 9 }).notNull().default("0.01"),
+  deadline: timestamp("deadline"),
+  marketPublicKey: varchar("market_public_key", { length: 44 }).notNull(),
+  marketEncryptedPrivateKey: text("market_encrypted_private_key").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("open"),
+  winningSide: varchar("winning_side", { length: 3 }),
+  messageId: integer("message_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const bets = pgTable("bets", {
+  id: serial("id").primaryKey(),
+  marketId: integer("market_id").notNull().references(() => markets.id),
+  userId: bigint("user_id", { mode: "bigint" }).notNull(),
+  side: varchar("side", { length: 3 }).notNull(),
+  amount: numeric("amount", { precision: 18, scale: 9 }).notNull(),
+  txSignature: varchar("tx_signature", { length: 128 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  unique("unique_bet_per_user_per_market").on(table.marketId, table.userId),
+]);
