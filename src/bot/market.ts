@@ -177,6 +177,17 @@ export function registerMarketHandlers(bot: Bot) {
       return;
     }
 
+    if (market.status === "open") {
+      await ctx.reply(`Market #${marketId} is still open. Run /closemarket ${marketId} first to stop bets before resolving.`);
+      return;
+    }
+
+    if (market.deadline && new Date() < market.deadline) {
+      const deadlineStr = market.deadline.toISOString().replace("T", " ").slice(0, 16) + " UTC";
+      await ctx.reply(`Cannot resolve yet. Deadline hasn't passed.\n\nDeadline: ${deadlineStr}`);
+      return;
+    }
+
     await ctx.reply(`Resolving market #${marketId}... Settling payouts.`);
 
     try {
