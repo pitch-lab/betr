@@ -3,10 +3,8 @@ import { InlineKeyboard } from "grammy";
 import { eq, and, count } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { markets, bets } from "../db/schema.js";
-import { encrypt } from "../utils/crypto.js";
-import { generateKeypair } from "../solana/wallet.js";
-import { env } from "../env.js";
 import { settleMarket } from "../resolver/index.js";
+import { getFixtures } from "../txline/client.js";
 
 export function registerMarketHandlers(bot: Bot) {
   bot.command("createmarket", async (ctx) => {
@@ -21,70 +19,65 @@ export function registerMarketHandlers(bot: Bot) {
       return;
     }
 
-    const input = ctx.match?.trim();
-    if (!input) {
+    const args = ctx.match?.trim().split(/\s+/);
+    if (!args || args.length !== 2) {
       await ctx.reply(
-        "Usage: /createmarket <question> | minbet:0.05 | deadline:2025-12-31\n\n" +
-        "Example: /createmarket Will BTC hit 100k? | minbet:0.01",
+        "Usage: /createmarket <bet_amount> <deadline>\n\n" +
+        "Example: /createmarket 0.01 2026-07-15",
       );
       return;
     }
 
-    const parts = input.split("|").map((p) => p.trim());
-    const question = parts[0]!;
-
-    let minBet = "0.01";
-    let deadline: Date | null = null;
-
-    for (const part of parts.slice(1)) {
-      const [key, value] = part.split(":").map((s) => s.trim());
-      if (key === "minbet" && value) {
-        const parsed = parseFloat(value);
-        if (!isNaN(parsed) && parsed > 0) {
-          minBet = parsed.toString();
-        }
-      } else if (key === "deadline" && value) {
-        const parsed = new Date(value);
-        if (!isNaN(parsed.getTime())) {
-          deadline = parsed;
-        }
-      }
+    const minBet = parseFloat(args[0]!);
+    if (isNaN(minBet) || minBet <= 0) {
+      await ctx.reply("Invalid bet amount. Must be a positive number.");
+      return;
     }
 
-    const { publicKey, secretKeyBase58 } = generateKeypair();
-    const encryptedKey = encrypt(secretKeyBase58, env.ENCRYPTION_KEY);
+    const deadline = new Date(args[1]!);
+    if (isNaN(deadline.getTime())) {
+      await ctx.reply("Invalid deadline. Use format: YYYY-MM-DD");
+      return;
+    }
 
-    const [market] = await db.insert(markets).values({
+    // Fetch upcoming fixtures from TxLINE before inserting anything
+    let fixtures: Awaited<ReturnType<typeof getFixtures>>;
+    try {
+      fixtures = await getFixtures();
+    } catch (err) {
+      console.error("Failed to fetch fixtures:", err);
+      await ctx.reply("Failed to fetch upcoming fixtures. Please try again.");
+      return;
+    }
+
+    if (fixtures.length === 0) {
+      await ctx.reply("No upcoming fixtures available at this time.");
+      return;
+    }
+
+    // Insert draft market — no question or keypair yet, waiting for fixture selection
+    const [draft] = await db.insert(markets).values({
       groupId: BigInt(ctx.chat.id),
       creatorId: BigInt(ctx.from!.id),
-      question,
-      minBet,
+      minBet: minBet.toString(),
       deadline,
-      marketPublicKey: publicKey,
-      marketEncryptedPrivateKey: encryptedKey,
-      status: "open",
+      status: "draft",
     }).returning();
 
-    const keyboard = new InlineKeyboard()
-      .text("YES (0)", `bet:${market!.id}:yes`)
-      .text("NO (0)", `bet:${market!.id}:no`);
+    // Show each fixture as its own button row (max 10)
+    const keyboard = new InlineKeyboard();
+    for (const fixture of fixtures.slice(0, 10)) {
+      const matchDate = new Date(fixture.StartTime).toISOString().split("T")[0];
+      keyboard.row().text(
+        `${fixture.Participant1} vs ${fixture.Participant2} (${matchDate})`,
+        `fix:${draft!.id}:${fixture.FixtureId}`,
+      );
+    }
 
-    const deadlineText = deadline
-      ? `\nDeadline: ${deadline.toISOString().split("T")[0]}`
-      : "";
-
-    const msg = await ctx.reply(
-      `<b>Market #${market!.id}</b>\n\n` +
-      `<b>${question}</b>\n\n` +
-      `Min Bet: ${minBet} SOL${deadlineText}\n` +
-      `Status: Open\n\n` +
-      `Tap YES or NO to place your bet!`,
+    await ctx.reply(
+      `<b>Select a match to create a market:</b>\n\nMin Bet: ${minBet} SOL | Deadline: ${args[1]}`,
       { parse_mode: "HTML", reply_markup: keyboard },
     );
-
-    await db.update(markets)
-      .set({ messageId: msg.message_id })
-      .where(eq(markets.id, market!.id));
   });
 
   bot.command("closemarket", async (ctx) => {
@@ -108,6 +101,11 @@ export function registerMarketHandlers(bot: Bot) {
 
     if (!market) {
       await ctx.reply("Market not found in this group.");
+      return;
+    }
+
+    if (market.status === "draft") {
+      await ctx.reply(`Market #${marketId} hasn't been set up yet. A fixture needs to be selected first.`);
       return;
     }
 
