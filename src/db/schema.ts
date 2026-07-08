@@ -13,11 +13,16 @@ export const markets = pgTable("markets", {
   id: serial("id").primaryKey(),
   groupId: bigint("group_id", { mode: "bigint" }).notNull(),
   creatorId: bigint("creator_id", { mode: "bigint" }).notNull(),
-  question: text("question").notNull(),
+  // nullable: set after fixture is selected from TxLINE
+  question: text("question"),
   minBet: numeric("min_bet", { precision: 18, scale: 9 }).notNull().default("0.01"),
   deadline: timestamp("deadline"),
-  marketPublicKey: varchar("market_public_key", { length: 44 }).notNull(),
-  marketEncryptedPrivateKey: text("market_encrypted_private_key").notNull(),
+  // nullable: generated after fixture is selected
+  marketPublicKey: varchar("market_public_key", { length: 44 }),
+  marketEncryptedPrivateKey: text("market_encrypted_private_key"),
+  // links this market to a TxLINE fixture for auto-resolution
+  fixtureId: integer("fixture_id"),
+  // draft → open → closed → resolved
   status: varchar("status", { length: 20 }).notNull().default("open"),
   winningSide: varchar("winning_side", { length: 3 }),
   messageId: integer("message_id"),
