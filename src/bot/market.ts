@@ -13,12 +13,6 @@ export function registerMarketHandlers(bot: Bot) {
       return;
     }
 
-    const member = await ctx.getChatMember(ctx.from!.id);
-    if (!["administrator", "creator"].includes(member.status)) {
-      await ctx.reply("Only group admins can create markets.");
-      return;
-    }
-
     const args = ctx.match?.trim().split(/\s+/);
     if (!args || args.length !== 2) {
       await ctx.reply(
@@ -83,12 +77,6 @@ export function registerMarketHandlers(bot: Bot) {
   bot.command("closemarket", async (ctx) => {
     if (ctx.chat.type !== "group" && ctx.chat.type !== "supergroup") return;
 
-    const member = await ctx.getChatMember(ctx.from!.id);
-    if (!["administrator", "creator"].includes(member.status)) {
-      await ctx.reply("Only group admins can close markets.");
-      return;
-    }
-
     const marketId = parseInt(ctx.match?.trim() ?? "");
     if (isNaN(marketId)) {
       await ctx.reply("Usage: /closemarket <marketId>");
@@ -140,12 +128,6 @@ export function registerMarketHandlers(bot: Bot) {
 
   bot.command("resolve", async (ctx) => {
     if (ctx.chat.type !== "group" && ctx.chat.type !== "supergroup") return;
-
-    const member = await ctx.getChatMember(ctx.from!.id);
-    if (!["administrator", "creator"].includes(member.status)) {
-      await ctx.reply("Only group admins can resolve markets.");
-      return;
-    }
 
     const args = ctx.match?.trim().split(/\s+/).filter(Boolean) ?? [];
 
