@@ -65,23 +65,34 @@ pnpm start
 
 | Command | Description |
 |---------|-------------|
-| `/createmarket <question>` | Create a new market |
+| `/createmarket <bet_amount> <deadline>` | Fetch live fixtures and create a market |
 | `/closemarket <id>` | Close a market (stop new bets) |
-| `/resolve <id> <yes\|no>` | Resolve a market and pay out winners |
+| `/resolve <id>` | Auto-resolve a TxLINE market via match score |
+| `/resolve <id> <yes\|no>` | Manually resolve a market |
 
-### Market Creation Options
+### Market Creation Flow
 
 ```
-/createmarket Will BTC hit 100k? | minbet:0.05 | deadline:2026-12-31
+/createmarket 0.01 2026-07-15
 ```
 
-- `minbet` - Minimum bet in SOL (default: 0.01)
-- `deadline` - Betting cutoff date (optional)
+1. Bot fetches upcoming fixtures from TxLINE
+2. A list of matches is shown as buttons in the group
+3. Any user taps a match to create the market
+4. Market opens with YES/NO betting buttons
+
+### Resolution
+
+- TxLINE markets: run `/resolve <id>` after the deadline. The bot fetches the final score automatically. YES = home team wins, NO = draw or away win.
+- Manual markets: run `/resolve <id> yes` or `/resolve <id> no`.
+- Markets must be closed with `/closemarket` before they can be resolved.
 
 ## How It Works
 
 1. Users DM the bot `/start` to create a Solana wallet
 2. Users deposit SOL to their wallet
-3. A group admin creates a market with `/createmarket`
-4. Users tap YES or NO buttons to bet (SOL is transferred from their wallet to the market wallet)
-5. Admin resolves the market — winners receive pro-rata payouts from the losing side's pool
+3. A group admin creates a market with `/createmarket` - bot shows live fixtures from TxLINE
+4. A user selects a match - market opens with YES/NO buttons
+5. Users tap YES or NO to bet (SOL is transferred on-chain to the market escrow wallet)
+6. Admin closes the market with `/closemarket`, then resolves with `/resolve`
+7. Winners receive pro-rata payouts from the losing side's pool
