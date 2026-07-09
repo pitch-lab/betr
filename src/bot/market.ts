@@ -4,7 +4,7 @@ import { eq, and, count } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { markets, bets } from "../db/schema.js";
 import { settleMarket } from "../resolver/index.js";
-import { getFixtures } from "../txline/client.js";
+import { getFixtures, getScore, determineOutcome } from "../txline/client.js";
 
 export function registerMarketHandlers(bot: Bot) {
   bot.command("createmarket", async (ctx) => {
@@ -147,17 +147,11 @@ export function registerMarketHandlers(bot: Bot) {
       return;
     }
 
-    const args = ctx.match?.trim().split(/\s+/);
-    if (!args || args.length !== 2) {
-      await ctx.reply("Usage: /resolve <marketId> <yes|no>");
-      return;
-    }
+    const args = ctx.match?.trim().split(/\s+/).filter(Boolean) ?? [];
 
-    const marketId = parseInt(args[0]!);
-    const winningSide = args[1]!.toLowerCase();
-
-    if (isNaN(marketId) || (winningSide !== "yes" && winningSide !== "no")) {
-      await ctx.reply("Usage: /resolve <marketId> <yes|no>");
+    const marketId = parseInt(args[0] ?? "");
+    if (isNaN(marketId)) {
+      await ctx.reply("Usage: /resolve <marketId>\n\nFor manual markets: /resolve <marketId> <yes|no>");
       return;
     }
 
@@ -175,6 +169,11 @@ export function registerMarketHandlers(bot: Bot) {
       return;
     }
 
+    if (market.status === "draft") {
+      await ctx.reply(`Market #${marketId} hasn't been set up yet. A fixture needs to be selected first.`);
+      return;
+    }
+
     if (market.status === "open") {
       await ctx.reply(`Market #${marketId} is still open. Run /closemarket ${marketId} first to stop bets before resolving.`);
       return;
@@ -186,10 +185,41 @@ export function registerMarketHandlers(bot: Bot) {
       return;
     }
 
+    // Determine winning side — auto via TxLINE if market has a fixture, manual otherwise
+    let winningSide: "yes" | "no";
+
+    if (market.fixtureId) {
+      // Auto-resolve: fetch score from TxLINE and determine outcome
+      let scores: Awaited<ReturnType<typeof getScore>>;
+      try {
+        scores = await getScore(market.fixtureId);
+      } catch (err) {
+        console.error("Failed to fetch score:", err);
+        await ctx.reply("Failed to fetch match score from TxLINE. Please try again.");
+        return;
+      }
+
+      const outcome = determineOutcome(scores);
+      if (outcome === null) {
+        await ctx.reply("Match hasn't finished yet or result is unavailable. Try again after the match ends.");
+        return;
+      }
+
+      winningSide = outcome;
+    } else {
+      // Manual resolve: admin must provide yes|no
+      const side = args[1]?.toLowerCase();
+      if (!side || (side !== "yes" && side !== "no")) {
+        await ctx.reply("Usage: /resolve <marketId> <yes|no>");
+        return;
+      }
+      winningSide = side as "yes" | "no";
+    }
+
     await ctx.reply(`Resolving market #${marketId}... Settling payouts.`);
 
     try {
-      const result = await settleMarket(marketId, winningSide as "yes" | "no");
+      const result = await settleMarket(marketId, winningSide);
 
       if (market.messageId) {
         try {

@@ -81,7 +81,7 @@ export function registerCallbacks(bot: Bot) {
       `<b>${question}</b>\n\n` +
       `Competition: ${fixture.Competition}\n` +
       `Match Date: ${matchDate}\n` +
-      `Min Bet: ${market.minBet} SOL${deadlineText}\n` +
+      `Min Bet: ${parseFloat(market.minBet)} SOL${deadlineText}\n` +
       `Status: Open\n\n` +
       `Tap YES or NO to place your bet!`,
       { parse_mode: "HTML", reply_markup: keyboard },
