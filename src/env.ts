@@ -11,6 +11,8 @@ export const env = Object.freeze({
   DATABASE_URL: required("DATABASE_URL"),
   ENCRYPTION_KEY: required("ENCRYPTION_KEY"),
   SOLANA_RPC_URL: required("SOLANA_RPC_URL"),
+  TXLINE_JWT: required("TXLINE_JWT"),
+  TXLINE_API_TOKEN: required("TXLINE_API_TOKEN"),
 });
 
 if (env.ENCRYPTION_KEY.length !== 64) {

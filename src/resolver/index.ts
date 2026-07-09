@@ -26,6 +26,7 @@ export async function settleMarket(
   });
 
   if (!market) throw new Error("Market not found");
+  if (!market.marketPublicKey || !market.marketEncryptedPrivateKey) throw new Error("Market wallet not configured");
 
   // Get all bets
   const allBets = await db.select().from(bets).where(eq(bets.marketId, marketId));
