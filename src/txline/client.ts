@@ -51,19 +51,71 @@ export async function getScore(fixtureId: number): Promise<ScoreEntry[]> {
   return res.json() as Promise<ScoreEntry[]>;
 }
 
-// Determine the outcome of a finished match.
-// YES = Participant1 (home) wins, NO = draw or away win.
-// Returns null if the match hasn't finished yet.
-export function determineOutcome(scores: ScoreEntry[]): "yes" | "no" | null {
+// Get the latest finished score entry, or null if match not finished
+export function getFinishedScore(scores: ScoreEntry[]): ScoreEntry | null {
   if (!scores.length) return null;
-
-  // Get the most recent score entry
   const latest = scores.reduce((a, b) => (b.Seq > a.Seq ? b : a));
-
   if (!FINISHED_STATES.includes(latest.GameState)) return null;
+  return latest;
+}
 
+// Legacy helper — kept for backwards compat
+export function determineOutcome(scores: ScoreEntry[]): "yes" | "no" | null {
+  const latest = getFinishedScore(scores);
+  if (!latest) return null;
   const homeGoals = latest.Stats?.["1"] ?? 0;
   const awayGoals = latest.Stats?.["2"] ?? 0;
-
   return homeGoals > awayGoals ? "yes" : "no";
+}
+
+// Resolve any market type from final scores
+// Stat keys: 1=home goals, 2=away goals, 3=home yellows, 4=away yellows,
+//            5=home reds, 6=away reds, 7=home corners, 8=away corners
+//            1001/1002=H1 goals home/away
+export function resolveMarketType(
+  scores: ScoreEntry[],
+  marketType: string,
+  threshold?: number | null,
+  targetTeam?: number | null,
+): "yes" | "no" | null {
+  const latest = getFinishedScore(scores);
+  if (!latest) return null;
+
+  const stat = (key: string) => latest.Stats?.[key] ?? 0;
+
+  switch (marketType) {
+    case "winner": {
+      const home = stat("1");
+      const away = stat("2");
+      return home > away ? "yes" : "no";
+    }
+    case "over_under_goals": {
+      const total = stat("1") + stat("2");
+      return total > (threshold ?? 2) ? "yes" : "no";
+    }
+    case "both_score": {
+      return stat("1") > 0 && stat("2") > 0 ? "yes" : "no";
+    }
+    case "clean_sheet": {
+      // targetTeam 1 = "will home keep a clean sheet?" → away goals === 0
+      // targetTeam 2 = "will away keep a clean sheet?" → home goals === 0
+      const goalsAgainst = (targetTeam ?? 1) === 1 ? stat("2") : stat("1");
+      return goalsAgainst === 0 ? "yes" : "no";
+    }
+    case "ht_winner": {
+      const homeH1 = stat("1001");
+      const awayH1 = stat("1002");
+      return homeH1 > awayH1 ? "yes" : "no";
+    }
+    case "over_under_corners": {
+      const total = stat("7") + stat("8");
+      return total > (threshold ?? 9) ? "yes" : "no";
+    }
+    case "over_under_cards": {
+      const total = stat("3") + stat("4");
+      return total > (threshold ?? 3) ? "yes" : "no";
+    }
+    default:
+      return null;
+  }
 }

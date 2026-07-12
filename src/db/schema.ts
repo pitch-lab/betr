@@ -22,7 +22,13 @@ export const markets = pgTable("markets", {
   marketEncryptedPrivateKey: text("market_encrypted_private_key"),
   // links this market to a TxLINE fixture for auto-resolution
   fixtureId: integer("fixture_id"),
-  // draft → open → closed → resolved
+  // market type: winner, over_under_goals, both_score, clean_sheet, ht_winner, over_under_corners, over_under_cards
+  marketType: varchar("market_type", { length: 30 }).notNull().default("winner"),
+  // threshold for over/under markets (e.g. 2 means "more than 2")
+  threshold: numeric("threshold", { precision: 10, scale: 1 }),
+  // for clean_sheet: which team (1 = home, 2 = away)
+  targetTeam: integer("target_team"),
+  // draft → fixture_selected → open → closed → resolved
   status: varchar("status", { length: 20 }).notNull().default("open"),
   winningSide: varchar("winning_side", { length: 3 }),
   messageId: integer("message_id"),
