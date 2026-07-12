@@ -17,6 +17,7 @@ export const markets = pgTable("markets", {
   question: text("question"),
   minBet: numeric("min_bet", { precision: 18, scale: 9 }).notNull().default("0.01"),
   deadline: timestamp("deadline"),
+  startTime: timestamp("start_time"),
   // nullable: generated after fixture is selected
   marketPublicKey: varchar("market_public_key", { length: 44 }),
   marketEncryptedPrivateKey: text("market_encrypted_private_key"),

@@ -235,6 +235,7 @@ export function registerCallbacks(bot: Bot) {
       marketType,
       threshold: threshold?.toString() ?? null,
       targetTeam,
+      startTime: new Date(fixture.StartTime),
       marketPublicKey: publicKey,
       marketEncryptedPrivateKey: encryptedKey,
       status: "open",
@@ -247,17 +248,14 @@ export function registerCallbacks(bot: Bot) {
 
     const matchDate = new Date(fixture.StartTime).toISOString().split("T")[0];
     const typeDef = MARKET_TYPES[marketType as MarketTypeKey];
-    const deadlineText = market.deadline
-      ? `\nDeadline: ${market.deadline.toISOString().split("T")[0]}`
-      : "";
 
     await ctx.editMessageText(
       `<b>Market #${marketId}</b>\n\n` +
       `<b>${question}</b>\n\n` +
       `Type: ${typeDef?.label ?? marketType}\n` +
       `Competition: ${fixture.Competition}\n` +
-      `Match Date: ${matchDate}\n` +
-      `Min Bet: ${parseFloat(market.minBet)} SOL${deadlineText}\n` +
+      `Kickoff: ${matchDate}\n` +
+      `Min Bet: ${parseFloat(market.minBet)} SOL\n` +
       `Status: Open\n\n` +
       `Tap YES or NO to place your bet!`,
       { parse_mode: "HTML", reply_markup: keyboard },
@@ -301,8 +299,8 @@ export function registerCallbacks(bot: Bot) {
       return;
     }
 
-    if (market.deadline && new Date() > market.deadline) {
-      await ctx.answerCallbackQuery({ text: "Betting deadline has passed.", show_alert: true });
+    if (market.startTime && new Date() > market.startTime) {
+      await ctx.answerCallbackQuery({ text: "Match has already started. Betting is closed.", show_alert: true });
       return;
     }
 
