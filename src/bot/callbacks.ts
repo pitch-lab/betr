@@ -344,6 +344,19 @@ export function registerCallbacks(bot: Bot) {
         show_alert: true,
       });
 
+      // Send tx receipt to user's DMs
+      try {
+        await ctx.api.sendMessage(
+          ctx.from.id,
+          `<b>Bet Confirmed</b>\n\n` +
+          `Market #${marketId}: ${market.question ?? "—"}\n` +
+          `Side: <b>${side.toUpperCase()}</b>\n` +
+          `Amount: ${minBet} SOL\n\n` +
+          `<a href="https://explorer.solana.com/tx/${txSig}?cluster=devnet">View Transaction</a>`,
+          { parse_mode: "HTML" },
+        );
+      } catch { /* user may not have started DM with bot */ }
+
       const [yesCount] = await db.select({ count: count() }).from(bets)
         .where(and(eq(bets.marketId, marketId), eq(bets.side, "yes")));
       const [noCount] = await db.select({ count: count() }).from(bets)
