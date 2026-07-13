@@ -1,6 +1,6 @@
 # Betr - Telegram Bet Market Bot
 
-Betr is a Telegram bot that lets users bet on live football matches using SOL on Solana devnet. Anyone can create bet markets in group chats backed by real match data from TxLINE. Users set up wallets via DM, place yes/no bets through inline buttons, and winners are paid out automatically based on final scores. Supports multiple market types including match winner, over/under goals, both teams score, clean sheets, halftime leader, corners, and cards.
+Betr is a Telegram bot that lets users bet on live football matches using SOL on Solana. Anyone can create bet markets in group chats backed by real match data from TxLINE. Users set up wallets via DM, place yes/no bets through inline buttons, and winners are paid out automatically based on final scores. Supports multiple market types including match winner, over/under goals, both teams score, clean sheets, halftime leader, corners, and cards.
 
 **Bot**: [t.me/betr_football_bot](https://t.me/betr_football_bot)
 **Demo**: [Watch on Loom](https://www.loom.com/share/366819a5c8314cd8ad384580d0fb7c77)
